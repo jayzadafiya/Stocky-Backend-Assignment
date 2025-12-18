@@ -8,6 +8,7 @@ function Show-Help {
     Write-Host "  .\run.ps1 migrate    - Run database migrations and seed data" -ForegroundColor Green
     Write-Host "  .\run.ps1 run        - Start the server in production mode" -ForegroundColor Green
     Write-Host "  .\run.ps1 dev        - Start the server in development mode" -ForegroundColor Green
+    Write-Host "  .\run.ps1 watch      - Start server with hot-reload (requires air)" -ForegroundColor Green
     Write-Host "  .\run.ps1 build      - Build the application" -ForegroundColor Green
     Write-Host "  .\run.ps1 clean      - Clean build artifacts" -ForegroundColor Green
     Write-Host "  .\run.ps1 test       - Run tests" -ForegroundColor Green
@@ -28,6 +29,20 @@ switch ($Command.ToLower()) {
         $env:GIN_MODE = "debug"
         $env:LOG_LEVEL = "debug"
         go run main.go
+    }
+    "watch" {
+        Write-Host "Checking for air installation..." -ForegroundColor Yellow
+        $airInstalled = Get-Command air -ErrorAction SilentlyContinue
+        if (-not $airInstalled) {
+            Write-Host "air is not installed. Installing..." -ForegroundColor Red
+            Write-Host "Run: go install github.com/air-verse/air@latest" -ForegroundColor Cyan
+            Write-Host "Make sure GOPATH/bin is in your PATH" -ForegroundColor Cyan
+            exit 1
+        }
+        Write-Host "Starting server with hot-reload..." -ForegroundColor Yellow
+        $env:GIN_MODE = "debug"
+        $env:LOG_LEVEL = "debug"
+        air
     }
     "build" {
         Write-Host "Building application..." -ForegroundColor Yellow
