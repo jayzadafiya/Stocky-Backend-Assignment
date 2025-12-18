@@ -1,0 +1,32 @@
+[
+  {
+    "email": "john.doe@example.com",
+    "name": "John Doe",
+    "phone": "+91-9876543210",
+    "is_active": true
+  },
+  {
+    "email": "jane.smith@example.com",
+    "name": "Jane Smith",
+    "phone": "+91-9876543211",
+    "is_active": true
+  },
+  {
+    "email": "alice.johnson@example.com",
+    "name": "Alice Johnson",
+    "phone": "+91-9876543212",
+    "is_active": true
+  },
+  {
+    "email": "bob.williams@example.com",
+    "name": "Bob Williams",
+    "phone": "+91-9876543213",
+    "is_active": true
+  },
+  {
+    "email": "charlie.brown@example.com",
+    "name": "Charlie Brown",
+    "phone": "+91-9876543214",
+    "is_active": true
+  }
+]
