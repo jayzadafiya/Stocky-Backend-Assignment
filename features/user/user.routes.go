@@ -12,4 +12,5 @@ func RegisterRoutes(router *gin.RouterGroup, handler *UserHandler) {
 	}
 
 	router.GET("/today-stocks/:userId", handler.GetTodayStockRewards)
+	router.GET("/historical-inr/:userId", handler.GetHistoricalINRValues)
 }

@@ -149,3 +149,41 @@ func (s *UserService) GetTodayStockRewards(userID, page, pageSize int) (*Paginat
 		TotalPages: totalPages,
 	}, nil
 }
+
+func (s *UserService) GetHistoricalINRValues(userID int) ([]HistoricalINRValue, error) {
+	query := `
+		SELECT 
+			DATE(re.created_at) as reward_date,
+			SUM(re.total_value) as total_value,
+			COUNT(*) as reward_count
+		FROM reward_events re
+		WHERE re.user_id = $1 
+		AND DATE(re.created_at) < CURRENT_DATE
+		GROUP BY DATE(re.created_at)
+		ORDER BY reward_date DESC
+	`
+
+	rows, err := s.db.Query(query, userID)
+	if err != nil {
+		logrus.Errorf("Failed to query historical INR values: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var historicalValues []HistoricalINRValue
+	for rows.Next() {
+		var value HistoricalINRValue
+		err := rows.Scan(
+			&value.Date,
+			&value.TotalValue,
+			&value.RewardCount,
+		)
+		if err != nil {
+			logrus.Errorf("Failed to scan historical INR value: %v", err)
+			return nil, err
+		}
+		historicalValues = append(historicalValues, value)
+	}
+
+	return historicalValues, nil
+}

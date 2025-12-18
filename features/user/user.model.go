@@ -51,3 +51,9 @@ type PaginatedStockRewardsResponse struct {
 	TotalCount int                `json:"total_count"`
 	TotalPages int                `json:"total_pages"`
 }
+
+type HistoricalINRValue struct {
+	Date       string  `json:"date"`
+	TotalValue float64 `json:"total_value"`
+	RewardCount int    `json:"reward_count"`
+}

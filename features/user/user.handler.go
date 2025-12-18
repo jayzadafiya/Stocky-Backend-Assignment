@@ -80,3 +80,20 @@ func (h *UserHandler) GetTodayStockRewards(c *gin.Context) {
 
 	c.JSON(http.StatusOK, rewards)
 }
+
+func (h *UserHandler) GetHistoricalINRValues(c *gin.Context) {
+	userID, err := strconv.Atoi(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	historicalValues, err := h.service.GetHistoricalINRValues(userID)
+	if err != nil {
+		logrus.Errorf("Error getting historical INR values: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve historical INR values"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": historicalValues})
+}
