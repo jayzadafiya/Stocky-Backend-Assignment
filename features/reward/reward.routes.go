@@ -9,6 +9,7 @@ func RegisterRoutes(router *gin.RouterGroup, handler *RewardHandler) {
 	rewards := router.Group("/reward")
 	{
 		rewards.POST("", handler.CreateReward)
+		rewards.POST("/adjust", handler.AdjustReward)
 		rewards.GET("", handler.GetAllRewards)
 		rewards.GET("/user/:userId", handler.GetRewardsByUserID)
 	}

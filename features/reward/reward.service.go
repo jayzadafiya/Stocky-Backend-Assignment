@@ -311,6 +311,113 @@ func (s *RewardService) GetRewardsByUserID(userID, page, pageSize int) (*Paginat
 	}, nil
 }
 
+func (s *RewardService) AdjustReward(req AdjustRewardRequest) (*RewardEvent, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		logrus.Errorf("Failed to begin transaction: %v", err)
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var originalReward RewardEvent
+	err = tx.QueryRow(`
+		SELECT id, user_id, stock_id, quantity, stock_price, total_value, event_type, status
+		FROM reward_events
+		WHERE id = $1
+	`, req.RewardEventID).Scan(
+		&originalReward.ID, &originalReward.UserID, &originalReward.StockID,
+		&originalReward.Quantity, &originalReward.StockPrice, &originalReward.TotalValue,
+		&originalReward.EventType, &originalReward.Status,
+	)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("reward event not found")
+	}
+	if err != nil {
+		logrus.Errorf("Failed to fetch reward event: %v", err)
+		return nil, err
+	}
+
+	if originalReward.EventType == "ADJUSTMENT" {
+		return nil, fmt.Errorf("cannot adjust an adjustment entry")
+	}
+
+	if req.AdjustmentType == "REFUND" && req.Quantity != originalReward.Quantity {
+		return nil, fmt.Errorf("full refund must match original quantity: %.6f", originalReward.Quantity)
+	}
+	if req.AdjustmentType == "PARTIAL_REFUND" && req.Quantity >= originalReward.Quantity {
+		return nil, fmt.Errorf("partial refund quantity must be less than original: %.6f", originalReward.Quantity)
+	}
+
+	var currentHoldings float64
+	err = tx.QueryRow(`
+		SELECT total_quantity FROM user_stock_holdings
+		WHERE user_id = $1 AND stock_id = $2
+	`, originalReward.UserID, originalReward.StockID).Scan(&currentHoldings)
+	if err != nil {
+		return nil, fmt.Errorf("user stock holdings not found")
+	}
+	if currentHoldings < req.Quantity {
+		return nil, fmt.Errorf("insufficient holdings: user has %.6f, adjustment requires %.6f", currentHoldings, req.Quantity)
+	}
+
+	adjustmentValue := req.Quantity * originalReward.StockPrice
+	description := fmt.Sprintf("%s for reward #%d: %s", req.AdjustmentType, req.RewardEventID, req.Reason)
+
+	var adjustmentEvent RewardEvent
+	err = tx.QueryRow(`
+		INSERT INTO reward_events (user_id, stock_id, quantity, stock_price, total_value, event_type, description)
+		VALUES ($1, $2, $3, $4, $5, 'ADJUSTMENT', $6)
+		RETURNING id, user_id, stock_id, quantity, stock_price, total_value, event_type, status, description, created_at, updated_at
+	`, originalReward.UserID, originalReward.StockID, req.Quantity, originalReward.StockPrice, adjustmentValue, description).Scan(
+		&adjustmentEvent.ID, &adjustmentEvent.UserID, &adjustmentEvent.StockID,
+		&adjustmentEvent.Quantity, &adjustmentEvent.StockPrice, &adjustmentEvent.TotalValue,
+		&adjustmentEvent.EventType, &adjustmentEvent.Status, &adjustmentEvent.Description,
+		&adjustmentEvent.CreatedAt, &adjustmentEvent.UpdatedAt,
+	)
+	if err != nil {
+		logrus.Errorf("Failed to create adjustment event: %v", err)
+		return nil, err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO ledger_entries (reward_event_id, user_id, entry_type, account_type, stock_id, quantity, description)
+		VALUES ($1, $2, 'CREDIT', 'STOCK_UNITS', $3, $4, $5)
+	`, adjustmentEvent.ID, originalReward.UserID, originalReward.StockID, -req.Quantity, description)
+	if err != nil {
+		logrus.Errorf("Failed to create stock ledger entry: %v", err)
+		return nil, err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO ledger_entries (reward_event_id, user_id, entry_type, account_type, amount, description)
+		VALUES ($1, $2, 'DEBIT', 'INR_CASH', $3, $4)
+	`, adjustmentEvent.ID, originalReward.UserID, adjustmentValue, description)
+	if err != nil {
+		logrus.Errorf("Failed to create credit ledger entry: %v", err)
+		return nil, err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE user_stock_holdings
+		SET total_quantity = total_quantity - $1,
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE user_id = $2 AND stock_id = $3
+	`, req.Quantity, originalReward.UserID, originalReward.StockID)
+	if err != nil {
+		logrus.Errorf("Failed to update user stock holdings: %v", err)
+		return nil, err
+	}
+
+	if err = tx.Commit(); err != nil {
+		logrus.Errorf("Failed to commit adjustment transaction: %v", err)
+		return nil, err
+	}
+
+	logrus.Infof("Reward adjusted successfully: User %d, %.6f units refunded for reward #%d",
+		originalReward.UserID, req.Quantity, req.RewardEventID)
+	return &adjustmentEvent, nil
+}
+
 func (s *RewardService) getFeeConfigurations(tx *sql.Tx) (map[string]float64, error) {
 	rows, err := tx.Query(`SELECT fee_type, percentage FROM fee_configurations WHERE is_active = true`)
 	if err != nil {
