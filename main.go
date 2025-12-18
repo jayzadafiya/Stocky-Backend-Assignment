@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"stocky-backend/config"
+	"stocky-backend/features/reward"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -19,7 +20,10 @@ func main() {
 
 	config.InitLogger()
 
-	
+	db, err := config.ConnectDatabase()
+	if err != nil {
+		logrus.Fatalf("Failed to connect to database: %v", err)
+	}
 	defer config.CloseDatabase()
 
 	ginMode := os.Getenv("GIN_MODE")
@@ -37,7 +41,13 @@ func main() {
 		})
 	})
 
-	
+	api := router.Group("/api")
+	{
+		rewardService := reward.NewRewardService(db)
+		rewardHandler := reward.NewRewardHandler(rewardService)
+		reward.RegisterRoutes(api, rewardHandler)
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
