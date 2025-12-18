@@ -150,7 +150,20 @@ func (s *UserService) GetTodayStockRewards(userID, page, pageSize int) (*Paginat
 	}, nil
 }
 
-func (s *UserService) GetHistoricalINRValues(userID int) ([]HistoricalINRValue, error) {
+func (s *UserService) GetHistoricalINRValues(userID, page, pageSize int) (*PaginatedHistoricalINRResponse, error) {
+	var totalCount int
+	err := s.db.QueryRow(`
+		SELECT COUNT(DISTINCT DATE(created_at))
+		FROM reward_events
+		WHERE user_id = $1 AND DATE(created_at) < CURRENT_DATE
+	`, userID).Scan(&totalCount)
+	if err != nil {
+		logrus.Errorf("Failed to count historical dates: %v", err)
+		return nil, err
+	}
+
+	offset := (page - 1) * pageSize
+
 	query := `
 		SELECT 
 			DATE(re.created_at) as reward_date,
@@ -161,9 +174,10 @@ func (s *UserService) GetHistoricalINRValues(userID int) ([]HistoricalINRValue, 
 		AND DATE(re.created_at) < CURRENT_DATE
 		GROUP BY DATE(re.created_at)
 		ORDER BY reward_date DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := s.db.Query(query, userID)
+	rows, err := s.db.Query(query, userID, pageSize, offset)
 	if err != nil {
 		logrus.Errorf("Failed to query historical INR values: %v", err)
 		return nil, err
@@ -185,7 +199,15 @@ func (s *UserService) GetHistoricalINRValues(userID int) ([]HistoricalINRValue, 
 		historicalValues = append(historicalValues, value)
 	}
 
-	return historicalValues, nil
+	totalPages := (totalCount + pageSize - 1) / pageSize
+
+	return &PaginatedHistoricalINRResponse{
+		Data:       historicalValues,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalCount: totalCount,
+		TotalPages: totalPages,
+	}, nil
 }
 
 func (s *UserService) GetUserStats(userID int) (*UserStats, error) {
@@ -243,5 +265,89 @@ func (s *UserService) GetUserStats(userID int) (*UserStats, error) {
 	return &UserStats{
 		TodayRewards:          todayRewards,
 		CurrentPortfolioValue: portfolioValue,
+	}, nil
+}
+
+func (s *UserService) GetUserPortfolio(userID, page, pageSize int) (*PaginatedPortfolioResponse, error) {
+	// Get total count of holdings
+	var totalCount int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*)
+		FROM user_stock_holdings
+		WHERE user_id = $1 AND total_quantity > 0
+	`, userID).Scan(&totalCount)
+	if err != nil {
+		logrus.Errorf("Failed to count portfolio holdings: %v", err)
+		return nil, err
+	}
+
+	// Get total portfolio value
+	var totalPortfolioValue float64
+	err = s.db.QueryRow(`
+		SELECT COALESCE(SUM(ush.total_quantity * s.current_price), 0)
+		FROM user_stock_holdings ush
+		JOIN stocks s ON ush.stock_id = s.id
+		WHERE ush.user_id = $1 AND ush.total_quantity > 0
+	`, userID).Scan(&totalPortfolioValue)
+	if err != nil {
+		logrus.Errorf("Failed to calculate total portfolio value: %v", err)
+		return nil, err
+	}
+
+	offset := (page - 1) * pageSize
+
+	query := `
+		SELECT 
+			s.symbol,
+			s.name,
+			ush.total_quantity,
+			ush.average_price,
+			s.current_price,
+			ush.total_quantity * s.current_price as current_value,
+			ush.total_quantity * ush.average_price as investment_cost,
+			(ush.total_quantity * s.current_price) - (ush.total_quantity * ush.average_price) as profit_loss
+		FROM user_stock_holdings ush
+		JOIN stocks s ON ush.stock_id = s.id
+		WHERE ush.user_id = $1 AND ush.total_quantity > 0
+		ORDER BY s.symbol
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := s.db.Query(query, userID, pageSize, offset)
+	if err != nil {
+		logrus.Errorf("Failed to query user portfolio: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var portfolio []PortfolioHolding
+	for rows.Next() {
+		var holding PortfolioHolding
+		err := rows.Scan(
+			&holding.StockSymbol,
+			&holding.StockName,
+			&holding.TotalQuantity,
+			&holding.AveragePrice,
+			&holding.CurrentPrice,
+			&holding.CurrentValue,
+			&holding.InvestmentCost,
+			&holding.ProfitLoss,
+		)
+		if err != nil {
+			logrus.Errorf("Failed to scan portfolio holding: %v", err)
+			return nil, err
+		}
+		portfolio = append(portfolio, holding)
+	}
+
+	totalPages := (totalCount + pageSize - 1) / pageSize
+
+	return &PaginatedPortfolioResponse{
+		Data:             portfolio,
+		Page:             page,
+		PageSize:         pageSize,
+		TotalCount:       totalCount,
+		TotalPages:       totalPages,
+		TotalPortfolioValue: totalPortfolioValue,
 	}, nil
 }

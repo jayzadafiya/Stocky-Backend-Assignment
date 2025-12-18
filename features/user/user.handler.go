@@ -88,14 +88,24 @@ func (h *UserHandler) GetHistoricalINRValues(c *gin.Context) {
 		return
 	}
 
-	historicalValues, err := h.service.GetHistoricalINRValues(userID)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	historicalValues, err := h.service.GetHistoricalINRValues(userID, page, pageSize)
 	if err != nil {
 		logrus.Errorf("Error getting historical INR values: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve historical INR values"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": historicalValues})
+	c.JSON(http.StatusOK, historicalValues)
 }
 
 func (h *UserHandler) GetUserStats(c *gin.Context) {
@@ -113,4 +123,31 @@ func (h *UserHandler) GetUserStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": stats})
+}
+
+func (h *UserHandler) GetUserPortfolio(c *gin.Context) {
+	userID, err := strconv.Atoi(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	portfolio, err := h.service.GetUserPortfolio(userID, page, pageSize)
+	if err != nil {
+		logrus.Errorf("Error getting user portfolio: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user portfolio"})
+		return
+	}
+
+	c.JSON(http.StatusOK, portfolio)
 }

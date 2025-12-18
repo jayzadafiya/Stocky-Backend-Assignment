@@ -68,3 +68,31 @@ type UserStats struct {
 	TodayRewards            []StockRewardSummary `json:"today_rewards"`
 	CurrentPortfolioValue   float64              `json:"current_portfolio_value"`
 }
+
+type PortfolioHolding struct {
+	StockSymbol    string  `json:"stock_symbol"`
+	StockName      string  `json:"stock_name"`
+	TotalQuantity  float64 `json:"total_quantity"`
+	AveragePrice   float64 `json:"average_price"`
+	CurrentPrice   float64 `json:"current_price"`
+	CurrentValue   float64 `json:"current_value"`
+	InvestmentCost float64 `json:"investment_cost"`
+	ProfitLoss     float64 `json:"profit_loss"`
+}
+
+type PaginatedHistoricalINRResponse struct {
+	Data       []HistoricalINRValue `json:"data"`
+	Page       int                  `json:"page"`
+	PageSize   int                  `json:"page_size"`
+	TotalCount int                  `json:"total_count"`
+	TotalPages int                  `json:"total_pages"`
+}
+
+type PaginatedPortfolioResponse struct {
+	Data             []PortfolioHolding `json:"data"`
+	Page             int                `json:"page"`
+	PageSize         int                `json:"page_size"`
+	TotalCount       int                `json:"total_count"`
+	TotalPages       int                `json:"total_pages"`
+	TotalPortfolioValue float64         `json:"total_portfolio_value"`
+}
