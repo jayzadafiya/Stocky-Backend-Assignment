@@ -1,0 +1,72 @@
+[
+  {
+    "symbol": "RELIANCE",
+    "name": "Reliance Industries Limited",
+    "exchange": "NSE",
+    "current_price": "2456.75",
+    "is_active": true
+  },
+  {
+    "symbol": "TCS",
+    "name": "Tata Consultancy Services Limited",
+    "exchange": "NSE",
+    "current_price": "3789.50",
+    "is_active": true
+  },
+  {
+    "symbol": "HDFCBANK",
+    "name": "HDFC Bank Limited",
+    "exchange": "NSE",
+    "current_price": "1654.30",
+    "is_active": true
+  },
+  {
+    "symbol": "INFY",
+    "name": "Infosys Limited",
+    "exchange": "NSE",
+    "current_price": "1432.80",
+    "is_active": true
+  },
+  {
+    "symbol": "ICICIBANK",
+    "name": "ICICI Bank Limited",
+    "exchange": "NSE",
+    "current_price": "987.65",
+    "is_active": true
+  },
+  {
+    "symbol": "WIPRO",
+    "name": "Wipro Limited",
+    "exchange": "NSE",
+    "current_price": "456.90",
+    "is_active": true
+  },
+  {
+    "symbol": "AXISBANK",
+    "name": "Axis Bank Limited",
+    "exchange": "NSE",
+    "current_price": "1089.45",
+    "is_active": true
+  },
+  {
+    "symbol": "BHARTIARTL",
+    "name": "Bharti Airtel Limited",
+    "exchange": "NSE",
+    "current_price": "1234.20",
+    "is_active": true
+  },
+  {
+    "symbol": "ITC",
+    "name": "ITC Limited",
+    "exchange": "NSE",
+    "current_price": "432.55",
+    "is_active": true
+  },
+  {
+    "symbol": "SBIN",
+    "name": "State Bank of India",
+    "exchange": "NSE",
+    "current_price": "654.75",
+    "is_active": true
+  }
+]
