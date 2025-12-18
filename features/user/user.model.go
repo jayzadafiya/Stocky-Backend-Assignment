@@ -57,3 +57,14 @@ type HistoricalINRValue struct {
 	TotalValue float64 `json:"total_value"`
 	RewardCount int    `json:"reward_count"`
 }
+
+type StockRewardSummary struct {
+	StockSymbol string  `json:"stock_symbol"`
+	StockName   string  `json:"stock_name"`
+	TotalShares float64 `json:"total_shares"`
+}
+
+type UserStats struct {
+	TodayRewards            []StockRewardSummary `json:"today_rewards"`
+	CurrentPortfolioValue   float64              `json:"current_portfolio_value"`
+}

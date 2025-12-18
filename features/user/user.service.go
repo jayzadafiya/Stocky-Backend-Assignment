@@ -187,3 +187,61 @@ func (s *UserService) GetHistoricalINRValues(userID int) ([]HistoricalINRValue, 
 
 	return historicalValues, nil
 }
+
+func (s *UserService) GetUserStats(userID int) (*UserStats, error) {
+	todayQuery := `
+		SELECT 
+			s.symbol,
+			s.name,
+			SUM(re.quantity) as total_shares
+		FROM reward_events re
+		JOIN stocks s ON re.stock_id = s.id
+		WHERE re.user_id = $1 
+		AND DATE(re.created_at) = CURRENT_DATE
+		GROUP BY s.symbol, s.name
+		ORDER BY s.symbol
+	`
+
+	rows, err := s.db.Query(todayQuery, userID)
+	if err != nil {
+		logrus.Errorf("Failed to query today's rewards: %v", err)
+		return nil, err
+	}
+
+	var todayRewards []StockRewardSummary
+	for rows.Next() {
+		var reward StockRewardSummary
+		err := rows.Scan(
+			&reward.StockSymbol,
+			&reward.StockName,
+			&reward.TotalShares,
+		)
+		if err != nil {
+			rows.Close()
+			logrus.Errorf("Failed to scan today's reward: %v", err)
+			return nil, err
+		}
+		todayRewards = append(todayRewards, reward)
+	}
+	rows.Close()
+
+	portfolioQuery := `
+		SELECT 
+			COALESCE(SUM(ush.total_quantity * s.current_price), 0) as portfolio_value
+		FROM user_stock_holdings ush
+		JOIN stocks s ON ush.stock_id = s.id
+		WHERE ush.user_id = $1 AND ush.total_quantity > 0
+	`
+
+	var portfolioValue float64
+	err = s.db.QueryRow(portfolioQuery, userID).Scan(&portfolioValue)
+	if err != nil {
+		logrus.Errorf("Failed to query portfolio value: %v", err)
+		return nil, err
+	}
+
+	return &UserStats{
+		TodayRewards:          todayRewards,
+		CurrentPortfolioValue: portfolioValue,
+	}, nil
+}

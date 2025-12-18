@@ -97,3 +97,20 @@ func (h *UserHandler) GetHistoricalINRValues(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": historicalValues})
 }
+
+func (h *UserHandler) GetUserStats(c *gin.Context) {
+	userID, err := strconv.Atoi(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	stats, err := h.service.GetUserStats(userID)
+	if err != nil {
+		logrus.Errorf("Error getting user stats: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user stats"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": stats})
+}
