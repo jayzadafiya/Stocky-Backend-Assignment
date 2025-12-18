@@ -26,6 +26,13 @@ type CreateRewardRequest struct {
 	IdempotencyKey string  `json:"idempotency_key"` // Optional: prevents duplicate submissions
 }
 
+type AdjustRewardRequest struct {
+	RewardEventID int     `json:"reward_event_id" binding:"required"`
+	AdjustmentType string `json:"adjustment_type" binding:"required,oneof=REFUND PARTIAL_REFUND"`
+	Quantity      float64 `json:"quantity" binding:"required,gt=0"`
+	Reason        string  `json:"reason" binding:"required"`
+}
+
 type RewardEventWithDetails struct {
 	ID          int       `json:"id"`
 	UserID      int       `json:"user_id"`

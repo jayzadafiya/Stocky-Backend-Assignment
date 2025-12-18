@@ -84,3 +84,23 @@ func (h *RewardHandler) GetRewardsByUserID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, rewards)
 }
+
+func (h *RewardHandler) AdjustReward(c *gin.Context) {
+	var req AdjustRewardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	adjustment, err := h.service.AdjustReward(req)
+	if err != nil {
+		logrus.Errorf("Error adjusting reward: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to adjust reward: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Reward adjusted successfully",
+		"data":    adjustment,
+	})
+}
