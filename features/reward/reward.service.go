@@ -39,6 +39,40 @@ func (s *RewardService) CreateReward(req CreateRewardRequest) (*RewardEvent, err
 		return nil, fmt.Errorf("user not found or inactive")
 	}
 
+	var duplicateExists bool
+	err = tx.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM reward_events 
+			WHERE user_id = $1 
+			AND stock_id = $2 
+			AND quantity = $3 
+			AND created_at > NOW() - INTERVAL '5 minutes'
+		)
+	`, req.UserID, stockID, req.Quantity).Scan(&duplicateExists)
+	if err != nil {
+		logrus.Errorf("Failed to check for duplicate reward: %v", err)
+		return nil, err
+	}
+	if duplicateExists {
+		return nil, fmt.Errorf("duplicate reward detected: similar reward was created within the last 5 minutes")
+	}
+
+	if req.IdempotencyKey != "" {
+		var existingRewardID int
+		err = tx.QueryRow(`
+			SELECT id FROM reward_events 
+			WHERE description LIKE $1
+			AND created_at > NOW() - INTERVAL '1 hour'
+			LIMIT 1
+		`, "%idempotency:"+req.IdempotencyKey+"%").Scan(&existingRewardID)
+		if err == nil {
+			return nil, fmt.Errorf("duplicate request: idempotency key already used")
+		} else if err != sql.ErrNoRows {
+			logrus.Errorf("Failed to check idempotency key: %v", err)
+			return nil, err
+		}
+	}
+
 	totalValue := req.Quantity * stockPrice
 
 	fees, err := s.getFeeConfigurations(tx)
@@ -50,12 +84,18 @@ func (s *RewardService) CreateReward(req CreateRewardRequest) (*RewardEvent, err
 	sttFee := totalValue * fees["STT"]
 	gstFee := brokerageFee * fees["GST"]
 
+	// Append idempotency key to description for tracking
+	description := req.Description
+	if req.IdempotencyKey != "" {
+		description = fmt.Sprintf("%s [idempotency:%s]", req.Description, req.IdempotencyKey)
+	}
+
 	var rewardEvent RewardEvent
 	err = tx.QueryRow(`
 		INSERT INTO reward_events (user_id, stock_id, quantity, stock_price, total_value, description)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, user_id, stock_id, quantity, stock_price, total_value, event_type, status, description, created_at, updated_at
-	`, req.UserID, stockID, req.Quantity, stockPrice, totalValue, req.Description).Scan(
+	`, req.UserID, stockID, req.Quantity, stockPrice, totalValue, description).Scan(
 		&rewardEvent.ID, &rewardEvent.UserID, &rewardEvent.StockID, &rewardEvent.Quantity,
 		&rewardEvent.StockPrice, &rewardEvent.TotalValue, &rewardEvent.EventType,
 		&rewardEvent.Status, &rewardEvent.Description, &rewardEvent.CreatedAt, &rewardEvent.UpdatedAt,
