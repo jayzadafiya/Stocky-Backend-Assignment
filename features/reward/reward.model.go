@@ -19,10 +19,11 @@ type RewardEvent struct {
 }
 
 type CreateRewardRequest struct {
-	UserID      int     `json:"user_id" binding:"required"`
-	StockSymbol string  `json:"stock_symbol" binding:"required"`
-	Quantity    float64 `json:"quantity" binding:"required,gt=0"`
-	Description string  `json:"description"`
+	UserID         int     `json:"user_id" binding:"required"`
+	StockSymbol    string  `json:"stock_symbol" binding:"required"`
+	Quantity       float64 `json:"quantity" binding:"required,gt=0"`
+	Description    string  `json:"description"`
+	IdempotencyKey string  `json:"idempotency_key"` // Optional: prevents duplicate submissions
 }
 
 type RewardEventWithDetails struct {
