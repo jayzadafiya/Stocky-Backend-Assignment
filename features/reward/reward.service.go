@@ -25,11 +25,32 @@ func (s *RewardService) CreateReward(req CreateRewardRequest) (*RewardEvent, err
 
 	var stockID int
 	var stockPrice float64
-	err = tx.QueryRow(`SELECT id, current_price FROM stocks WHERE symbol = $1 AND is_active = true`, 
-		req.StockSymbol).Scan(&stockID, &stockPrice)
+	var stockName string
+	err = tx.QueryRow(`SELECT id, current_price, name FROM stocks WHERE symbol = $1 AND is_active = true`, 
+		req.StockSymbol).Scan(&stockID, &stockPrice, &stockName)
 	if err != nil {
 		logrus.Errorf("Failed to get stock details: %v", err)
+		var isDelisted bool
+		err2 := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM stocks WHERE symbol = $1 AND is_active = false)`, 
+			req.StockSymbol).Scan(&isDelisted)
+		if err2 == nil && isDelisted {
+			return nil, fmt.Errorf("stock '%s' is delisted and cannot receive new rewards", req.StockSymbol)
+		}
 		return nil, fmt.Errorf("stock not found or inactive")
+	}
+
+	var pendingAction string
+	err = tx.QueryRow(`
+		SELECT action_type FROM corporate_actions 
+		WHERE stock_id = $1 AND status = 'PENDING' 
+		AND effective_date <= CURRENT_DATE
+		LIMIT 1
+	`, stockID).Scan(&pendingAction)
+	if err == nil {
+		return nil, fmt.Errorf("stock '%s' has a pending %s corporate action. Please process it before issuing new rewards", req.StockSymbol, pendingAction)
+	} else if err != sql.ErrNoRows {
+		logrus.Errorf("Failed to check corporate actions: %v", err)
+		return nil, err
 	}
 
 	var userExists bool
@@ -84,7 +105,6 @@ func (s *RewardService) CreateReward(req CreateRewardRequest) (*RewardEvent, err
 	sttFee := totalValue * fees["STT"]
 	gstFee := brokerageFee * fees["GST"]
 
-	// Append idempotency key to description for tracking
 	description := req.Description
 	if req.IdempotencyKey != "" {
 		description = fmt.Sprintf("%s [idempotency:%s]", req.Description, req.IdempotencyKey)

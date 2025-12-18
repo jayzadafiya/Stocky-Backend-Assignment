@@ -23,7 +23,7 @@ type CreateRewardRequest struct {
 	StockSymbol    string  `json:"stock_symbol" binding:"required"`
 	Quantity       float64 `json:"quantity" binding:"required,gt=0"`
 	Description    string  `json:"description"`
-	IdempotencyKey string  `json:"idempotency_key"` // Optional: prevents duplicate submissions
+	IdempotencyKey string  `json:"idempotency_key"`
 }
 
 type RewardEventWithDetails struct {

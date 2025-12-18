@@ -18,5 +18,14 @@ CREATE INDEX IF NOT EXISTS idx_ledger_entries_account_type ON ledger_entries(acc
 CREATE INDEX IF NOT EXISTS idx_ledger_entries_stock_id ON ledger_entries(stock_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_entries_created_at ON ledger_entries(created_at);
 
-ALTER TABLE ledger_entries ADD CONSTRAINT check_quantity_or_amount 
-    CHECK ((quantity IS NOT NULL AND amount IS NULL) OR (quantity IS NULL AND amount IS NOT NULL));
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'check_quantity_or_amount' 
+        AND conrelid = 'ledger_entries'::regclass
+    ) THEN
+        ALTER TABLE ledger_entries ADD CONSTRAINT check_quantity_or_amount 
+            CHECK ((quantity IS NOT NULL AND amount IS NULL) OR (quantity IS NULL AND amount IS NOT NULL));
+    END IF;
+END $$;
