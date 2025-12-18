@@ -269,7 +269,6 @@ func (s *UserService) GetUserStats(userID int) (*UserStats, error) {
 }
 
 func (s *UserService) GetUserPortfolio(userID, page, pageSize int) (*PaginatedPortfolioResponse, error) {
-	// Get total count of holdings
 	var totalCount int
 	err := s.db.QueryRow(`
 		SELECT COUNT(*)
@@ -281,7 +280,6 @@ func (s *UserService) GetUserPortfolio(userID, page, pageSize int) (*PaginatedPo
 		return nil, err
 	}
 
-	// Get total portfolio value
 	var totalPortfolioValue float64
 	err = s.db.QueryRow(`
 		SELECT COALESCE(SUM(ush.total_quantity * s.current_price), 0)

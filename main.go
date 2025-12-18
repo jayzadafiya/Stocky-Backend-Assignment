@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"stocky-backend/config"
+	"stocky-backend/features/corporate_action"
 	"stocky-backend/features/reward"
 	"stocky-backend/features/user"
 
@@ -47,6 +48,10 @@ func main() {
 		rewardService := reward.NewRewardService(db)
 		rewardHandler := reward.NewRewardHandler(rewardService)
 		reward.RegisterRoutes(api, rewardHandler)
+
+		corporateActionService := corporate_action.NewCorporateActionService(db)
+		corporateActionHandler := corporate_action.NewCorporateActionHandler(corporateActionService)
+		corporate_action.RegisterRoutes(api, corporateActionHandler)
 
 		userService := user.NewUserService(db)
 		userHandler := user.NewUserHandler(userService)
