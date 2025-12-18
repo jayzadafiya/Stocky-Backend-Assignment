@@ -7,6 +7,7 @@ import (
 
 	"stocky-backend/config"
 	"stocky-backend/features/reward"
+	"stocky-backend/features/user"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -46,6 +47,10 @@ func main() {
 		rewardService := reward.NewRewardService(db)
 		rewardHandler := reward.NewRewardHandler(rewardService)
 		reward.RegisterRoutes(api, rewardHandler)
+
+		userService := user.NewUserService(db)
+		userHandler := user.NewUserHandler(userService)
+		user.RegisterRoutes(api, userHandler)
 	}
 
 	port := os.Getenv("PORT")
