@@ -100,8 +100,8 @@ func (s *UserService) GetTodayStockRewards(userID, page, pageSize int) (*Paginat
 			s.symbol as stock_symbol,
 			s.name as stock_name,
 			re.quantity,
-			re.stock_price,
-			re.total_value,
+			ROUND(re.stock_price, 2) as stock_price,
+			ROUND(re.total_value, 2) as total_value,
 			re.description,
 			re.created_at
 		FROM reward_events re
@@ -167,7 +167,7 @@ func (s *UserService) GetHistoricalINRValues(userID, page, pageSize int) (*Pagin
 	query := `
 		SELECT 
 			DATE(re.created_at) as reward_date,
-			SUM(re.total_value) as total_value,
+			ROUND(SUM(re.total_value), 2) as total_value,
 			COUNT(*) as reward_count
 		FROM reward_events re
 		WHERE re.user_id = $1 
@@ -249,7 +249,7 @@ func (s *UserService) GetUserStats(userID int) (*UserStats, error) {
 
 	portfolioQuery := `
 		SELECT 
-			COALESCE(SUM(ush.total_quantity * s.current_price), 0) as portfolio_value
+			ROUND(COALESCE(SUM(ush.total_quantity * s.current_price), 0), 2) as portfolio_value
 		FROM user_stock_holdings ush
 		JOIN stocks s ON ush.stock_id = s.id
 		WHERE ush.user_id = $1 AND ush.total_quantity > 0
@@ -282,7 +282,7 @@ func (s *UserService) GetUserPortfolio(userID, page, pageSize int) (*PaginatedPo
 
 	var totalPortfolioValue float64
 	err = s.db.QueryRow(`
-		SELECT COALESCE(SUM(ush.total_quantity * s.current_price), 0)
+		SELECT ROUND(COALESCE(SUM(ush.total_quantity * s.current_price), 0), 2)
 		FROM user_stock_holdings ush
 		JOIN stocks s ON ush.stock_id = s.id
 		WHERE ush.user_id = $1 AND ush.total_quantity > 0
@@ -299,11 +299,11 @@ func (s *UserService) GetUserPortfolio(userID, page, pageSize int) (*PaginatedPo
 			s.symbol,
 			s.name,
 			ush.total_quantity,
-			ush.average_price,
-			s.current_price,
-			ush.total_quantity * s.current_price as current_value,
-			ush.total_quantity * ush.average_price as investment_cost,
-			(ush.total_quantity * s.current_price) - (ush.total_quantity * ush.average_price) as profit_loss
+			ROUND(ush.average_price, 2) as average_price,
+			ROUND(s.current_price, 2) as current_price,
+			ROUND(ush.total_quantity * s.current_price, 2) as current_value,
+			ROUND(ush.total_quantity * ush.average_price, 2) as investment_cost,
+			ROUND((ush.total_quantity * s.current_price) - (ush.total_quantity * ush.average_price), 2) as profit_loss
 		FROM user_stock_holdings ush
 		JOIN stocks s ON ush.stock_id = s.id
 		WHERE ush.user_id = $1 AND ush.total_quantity > 0
