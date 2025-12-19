@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"stocky-backend/middleware"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -30,7 +32,7 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	users, err := h.service.GetAllUsers(page, pageSize)
 	if err != nil {
 		logrus.Errorf("Error getting users: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve users"})
+		c.Error(middleware.InternalServerError("Failed to retrieve users", err.Error()))
 		return
 	}
 
@@ -40,14 +42,14 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 func (h *UserHandler) GetUserByID(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.Error(middleware.BadRequestError("Invalid user ID", err.Error()))
 		return
 	}
 
 	user, err := h.service.GetUserByID(userID)
 	if err != nil {
 		logrus.Errorf("Error getting user: %v", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		c.Error(middleware.NotFoundError("User not found", err.Error()))
 		return
 	}
 
