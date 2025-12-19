@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"stocky-backend/middleware"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -19,18 +21,18 @@ func NewCorporateActionHandler(service *CorporateActionService) *CorporateAction
 func (h *CorporateActionHandler) CreateCorporateAction(c *gin.Context) {
 	var req CreateCorporateActionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Error(middleware.BadRequestError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.ActionType == ActionStockSplit && req.SplitRatio <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "split_ratio is required and must be greater than 0 for stock split"})
+		c.Error(middleware.BadRequestError("Invalid split ratio", "split_ratio is required and must be greater than 0 for stock split"))
 		return
 	}
 
 	if req.ActionType == ActionMerger {
 		if req.MergerToSymbol == "" || req.MergerRatio <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "merger_to_symbol and merger_ratio are required for merger"})
+			c.Error(middleware.BadRequestError("Invalid merger parameters", "merger_to_symbol and merger_ratio are required for merger"))
 			return
 		}
 	}
@@ -38,7 +40,7 @@ func (h *CorporateActionHandler) CreateCorporateAction(c *gin.Context) {
 	action, err := h.service.CreateCorporateAction(req)
 	if err != nil {
 		logrus.Errorf("Error creating corporate action: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Error(middleware.InternalServerError("Failed to create corporate action", err.Error()))
 		return
 	}
 
@@ -51,13 +53,13 @@ func (h *CorporateActionHandler) CreateCorporateAction(c *gin.Context) {
 func (h *CorporateActionHandler) ProcessCorporateAction(c *gin.Context) {
 	actionID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid action ID"})
+		c.Error(middleware.BadRequestError("Invalid action ID", err.Error()))
 		return
 	}
 
 	if err := h.service.ProcessCorporateAction(actionID); err != nil {
 		logrus.Errorf("Error processing corporate action: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Error(middleware.InternalServerError("Failed to process corporate action", err.Error()))
 		return
 	}
 
@@ -71,7 +73,7 @@ func (h *CorporateActionHandler) GetAllCorporateActions(c *gin.Context) {
 	response, err := h.service.GetAllCorporateActions(page, pageSize)
 	if err != nil {
 		logrus.Errorf("Error getting corporate actions: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve corporate actions"})
+		c.Error(middleware.InternalServerError("Failed to retrieve corporate actions", err.Error()))
 		return
 	}
 

@@ -9,6 +9,7 @@ import (
 	"stocky-backend/features/corporate_action"
 	"stocky-backend/features/reward"
 	"stocky-backend/features/user"
+	"stocky-backend/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -34,7 +35,12 @@ func main() {
 	}
 	gin.SetMode(ginMode)
 
-	router := gin.Default()
+	router := gin.New()
+
+	router.Use(middleware.RecoveryHandler())
+	router.Use(middleware.RequestLogger())
+	router.Use(middleware.CORS())
+	router.Use(middleware.GlobalErrorHandler())
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
