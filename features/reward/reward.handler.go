@@ -1,9 +1,10 @@
 package reward
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
+
+	"stocky-backend/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -20,14 +21,14 @@ func NewRewardHandler(service *RewardService) *RewardHandler {
 func (h *RewardHandler) CreateReward(c *gin.Context) {
 	var req CreateRewardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Error(middleware.BadRequestError("Invalid request body", err.Error()))
 		return
 	}
 
 	reward, err := h.service.CreateReward(req)
 	if err != nil {
 		logrus.Errorf("Error creating reward: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create reward: %v", err)})
+		c.Error(middleware.InternalServerError("Failed to create reward", err.Error()))
 		return
 	}
 
@@ -51,7 +52,7 @@ func (h *RewardHandler) GetAllRewards(c *gin.Context) {
 	rewards, err := h.service.GetAllRewards(page, pageSize)
 	if err != nil {
 		logrus.Errorf("Error getting rewards: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve rewards"})
+		c.Error(middleware.InternalServerError("Failed to retrieve rewards", err.Error()))
 		return
 	}
 
@@ -61,7 +62,7 @@ func (h *RewardHandler) GetAllRewards(c *gin.Context) {
 func (h *RewardHandler) GetRewardsByUserID(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("userId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.Error(middleware.BadRequestError("Invalid user ID", err.Error()))
 		return
 	}
 
@@ -78,7 +79,7 @@ func (h *RewardHandler) GetRewardsByUserID(c *gin.Context) {
 	rewards, err := h.service.GetRewardsByUserID(userID, page, pageSize)
 	if err != nil {
 		logrus.Errorf("Error getting user rewards: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user rewards"})
+		c.Error(middleware.InternalServerError("Failed to retrieve user rewards", err.Error()))
 		return
 	}
 
@@ -88,14 +89,14 @@ func (h *RewardHandler) GetRewardsByUserID(c *gin.Context) {
 func (h *RewardHandler) AdjustReward(c *gin.Context) {
 	var req AdjustRewardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Error(middleware.BadRequestError("Invalid request body", err.Error()))
 		return
 	}
 
 	adjustment, err := h.service.AdjustReward(req)
 	if err != nil {
 		logrus.Errorf("Error adjusting reward: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to adjust reward: %v", err)})
+		c.Error(middleware.InternalServerError("Failed to adjust reward", err.Error()))
 		return
 	}
 
